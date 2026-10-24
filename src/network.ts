@@ -1,4 +1,3 @@
-import { get as getRequest } from 'request';
 import * as LRU from 'lru-cache';
 
 import { InvestorProfile, FirmProfile, InvestMentHistory, FirmMemberList } from './network.d'
@@ -10,34 +9,24 @@ setInterval(function () {
 }, 300 * 1000); // 300 * 1000 milsec = every 5 minutes
 
 async function get(url: string): Promise<any> {
-    return new Promise(async function (resolve, reject) {
-        const options = {
-            url: url,
-            gzip: true,
-            json: true,
-            timeout: 50000,
-        };
+    if (cache.has(url))
+        return cache.get(url);
 
-        if (cache.has(url))
-            return resolve(cache.get(url));
+    let resp: Response;
+    try {
+        resp = await fetch(url, { signal: AbortSignal.timeout(50000) });
+    } catch (err) {
+        console.log('Error ' + url);
+        throw err;
+    }
 
-        // Do networking
-        getRequest(options, function (err, resp, body: JSON) {
-            if (err) {
-                console.log('Error ' + url);
-                throw (err);
-            } else {
-                if (isBadStatusCode(resp.statusCode)) {
-                    console.error('HTTP CODE: ' + resp.statusCode + ' | URL: ' + options.url);
-                    return reject(body);
-                } else {
-                    //console.log('Resolved ' + url);
-                    cache.set(url, body);
-                    return resolve(body);
-                }
-            }
-        });
-    });
+    const body = await resp.json().catch(() => undefined);
+    if (isBadStatusCode(resp.status)) {
+        console.error('HTTP CODE: ' + resp.status + ' | URL: ' + url);
+        throw body;
+    }
+    cache.set(url, body);
+    return body;
 }
 
 /**

@@ -306,7 +306,7 @@ async function active(msg: Discord.Message, args: string[]) {
         return;
     }
 
-    const investment = getSubmission(history[0].post);
+    const investment = await getSubmission(history[0].post);
 
     const timediff = (history[0].time + 14400) - Math.trunc(new Date().getTime() / 1000); // 14400 = 4 hours
     const hours = Math.trunc(timediff / 60 / 60);
